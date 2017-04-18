@@ -76,7 +76,6 @@ def learn(env,
     """
     assert type(env.observation_space) == gym.spaces.Box
     assert type(env.action_space)      == gym.spaces.Discrete
-    print("########## {} ############".format(replay_buffer_size))
     ###############
     # BUILD MODEL #
     ###############
@@ -131,8 +130,9 @@ def learn(env,
     Q_func = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
     onehot = tf.one_hot(act_t_ph, num_actions)
     target_q_func = q_func(obs_tp1_float, num_actions, scope="target_q", reuse=False)
-    target_q = rew_t_ph+gamma*tf.multiply(tf.reduce_max(target_q_func, axis=1),done_mask_ph)
+    target_q = rew_t_ph + gamma * tf.multiply(tf.reduce_max(target_q_func, axis=1),(1-done_mask_ph))
     
+    #total_error = tf.reduce_mean(huber_loss(tf.subtract(target_q, tf.reduce_sum(tf.multiply(Q_func,onehot),axis=1))))
     total_error = tf.reduce_mean(huber_loss(tf.subtract(target_q, tf.reduce_sum(tf.multiply(Q_func,onehot),axis=1))))
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="q_func")
     target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="target_q")
@@ -164,6 +164,7 @@ def learn(env,
     last_obs = env.reset()
     LOG_EVERY_N_STEPS = 10000
     session.run(tf.global_variables_initializer())
+    session.run(update_target_fn)
     model_initialized = True
     for t in itertools.count():
         ### 1. Check stopping criterion
